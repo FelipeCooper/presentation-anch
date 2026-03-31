@@ -1,0 +1,7 @@
+[
+  { "id": "bitcoin",  "symbol": "btc", "name": "Bitcoin",  "quantity": 1,   "costBasis": 45000 },
+  { "id": "ethereum", "symbol": "eth", "name": "Ethereum", "quantity": 4.0,   "costBasis": 2800  },
+  { "id": "solana",   "symbol": "sol", "name": "Solana",   "quantity": 50.0,  "costBasis": 120   },
+  { "id": "cardano",  "symbol": "ada", "name": "Cardano",  "quantity": 5000,  "costBasis": 0.75  },
+  { "id": "polkadot", "symbol": "dot", "name": "Polkadot", "quantity": 200,   "costBasis": 18    }
+]

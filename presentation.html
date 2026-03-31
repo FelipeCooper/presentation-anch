@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code: From Prompt to Process</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.css">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a28;
+      --border: #2a2a3f;
+      --green: #00ff9d;
+      --blue: #4d9fff;
+      --purple: #a855f7;
+      --orange: #ff7849;
+      --red: #ff4d6d;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --mono: 'JetBrains Mono', monospace;
+      --display: 'Syne', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    .reveal-viewport { background: var(--bg) !important; }
+    .reveal, .reveal .slides { background: var(--bg) !important; }
+    .reveal { font-family: var(--display); color: var(--text); }
+
+    .reveal h1 { font-family: var(--display); font-size: 2.6em; font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; text-transform: none; margin: 0; }
+    .reveal h2 { font-family: var(--display); font-size: 1.8em; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; text-transform: none; margin: 0 0 10px; }
+    .reveal h3 { font-family: var(--display); font-size: 1.0em; font-weight: 700; text-transform: none; margin: 0 0 4px; }
+    .reveal ul { list-style: none; padding: 0; margin: 0; }
+    .reveal ul li { font-size: 0.9em; line-height: 1.5; padding: 3px 0 3px 20px; position: relative; }
+    .reveal ul li::before { content: '\2192'; color: var(--green); font-family: var(--mono); position: absolute; left: 0; }
+    .reveal section { text-align: left; }
+    .reveal .slides > section { padding: 0 !important; }
+    .reveal .slides section .fragment { opacity: 0.12; transition: opacity 0.25s; }
+    .reveal .slides section .fragment.visible { opacity: 1; }
+    .reveal strong { color: var(--green); }
+    code { font-family: var(--mono); font-size: 0.88em; color: var(--green); }
+    .reveal p { font-size: 0.92em; line-height: 1.6; margin: 0; }
+
+    .s {
+      width: 960px;
+      min-height: 700px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 28px 52px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 0.65em;
+      color: var(--green);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      display: block;
+    }
+    .slabel {
+      font-family: var(--mono);
+      font-size: 0.6em;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .divider { width: 34px; height: 3px; background: var(--green); border-radius: 2px; margin: 12px 0; }
+
+    .pill { display: inline-block; font-family: var(--mono); font-size: 0.6em; padding: 3px 10px; border-radius: 100px; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .pg { background: rgba(0,255,157,0.12); color: var(--green); border: 1px solid rgba(0,255,157,0.3); }
+    .pb { background: rgba(77,159,255,0.12); color: var(--blue);  border: 1px solid rgba(77,159,255,0.3); }
+    .po { background: rgba(255,120,73,0.12); color: var(--orange); border: 1px solid rgba(255,120,73,0.3); }
+    .pp { background: rgba(168,85,247,0.12); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+
+    .cb {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 0.7em;
+      line-height: 1.8;
+      margin: 8px 0;
+    }
+    .cg { color: var(--green); }
+    .cb_ { color: var(--blue); }
+    .co { color: var(--orange); }
+    .cm { color: var(--muted); }
+    .cp { color: var(--purple); }
+
+    .grid { display: grid; gap: 10px; margin-top: 12px; }
+    .g2 { grid-template-columns: 1fr 1fr; }
+    .g3 { grid-template-columns: 1fr 1fr 1fr; }
+    .g4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 14px; }
+    .card-n { font-family: var(--mono); font-size: 0.7em; color: var(--green); margin-bottom: 5px; display: block; }
+    .card h3 { font-size: 0.95em; }
+    .card p { font-size: 0.8em; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+
+    .hb { background: rgba(0,255,157,0.06); border: 1px solid rgba(0,255,157,0.2); border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 8px 0; font-size: 0.85em; line-height: 1.6; }
+    .wb { background: rgba(255,120,73,0.06); border: 1px solid rgba(255,120,73,0.2); border-left: 3px solid var(--orange); border-radius: 0 6px 6px 0; padding: 10px 14px; margin: 8px 0; font-size: 0.85em; line-height: 1.6; }
+
+    .tree { font-family: var(--mono); font-size: 0.68em; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 12px 16px; margin: 8px 0; }
+    .td { color: var(--blue); font-weight: 600; }
+    .tf { color: var(--text); }
+    .tc { color: var(--muted); }
+
+    .ctable { width: 100%; border-collapse: collapse; font-size: 0.72em; font-family: var(--mono); margin-top: 10px; }
+    .ctable th { background: var(--surface2); color: var(--muted); padding: 7px 11px; text-align: left; font-weight: 600; letter-spacing: 0.04em; }
+    .ctable td { padding: 7px 11px; border-bottom: 1px solid var(--border); }
+    .ctable tr:last-child td { border-bottom: none; }
+    .yes { color: var(--green); }
+    .no { color: var(--red); }
+    .meh { color: var(--orange); }
+
+    .layer-row { display: flex; gap: 10px; margin: 10px 0; }
+    .lbox { flex: 1; border-radius: 7px; padding: 11px 13px; border: 1px solid var(--border); }
+    .lbox .ln { font-family: var(--mono); font-size: 0.72em; font-weight: 700; margin-bottom: 4px; display: block; }
+    .lbox p { font-size: 0.8em; color: var(--muted); margin: 0; line-height: 1.4; }
+    .lo { border-color: rgba(255,120,73,0.4); background: rgba(255,120,73,0.05); }
+    .lo .ln { color: var(--orange); }
+    .lb { border-color: rgba(77,159,255,0.4); background: rgba(77,159,255,0.05); }
+    .lb .ln { color: var(--blue); }
+    .lg { border-color: rgba(0,255,157,0.4); background: rgba(0,255,157,0.05); }
+    .lg .ln { color: var(--green); }
+
+    .fi { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 5px 11px; font-family: var(--mono); font-size: 0.7em; font-weight: 600; }
+    .fig { border-color: var(--green); color: var(--green); }
+    .fib { border-color: var(--blue); color: var(--blue); }
+    .fip { border-color: var(--purple); color: var(--purple); }
+    .fio { border-color: var(--orange); color: var(--orange); }
+    .fa { color: var(--muted); font-family: var(--mono); font-size: 0.78em; }
+
+    .tool-card { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 11px 13px; }
+    .tc-label { font-family: var(--mono); font-size: 0.7em; font-weight: 700; margin-bottom: 4px; display: block; }
+    .tool-card p { font-size: 0.8em; color: var(--muted); line-height: 1.4; }
+
+    .glow1 { position: absolute; top: -140px; right: -140px; width: 420px; height: 420px; background: radial-gradient(circle, rgba(0,255,157,0.08) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+    .glow2 { position: absolute; bottom: -100px; left: -100px; width: 360px; height: 360px; background: radial-gradient(circle, rgba(77,159,255,0.06) 0%, transparent 70%); border-radius: 50%; pointer-events: none; }
+
+    .reveal .controls { color: var(--green); }
+    .reveal .progress { color: var(--green); height: 2px; }
+    .reveal .slide-number { font-family: var(--mono); font-size: 0.5em; color: var(--muted); background: transparent; }
+
+    .sm { font-size: 0.75em; color: var(--muted); line-height: 1.5; }
+    .vs-arrow { font-family: var(--mono); font-size: 1.4em; color: var(--muted); text-align: center; margin: 6px 0; }
+
+    .zoom-controls {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 100;
+      display: flex;
+      gap: 4px;
+      opacity: 0.4;
+      transition: opacity 0.2s;
+    }
+    .zoom-controls:hover { opacity: 1; }
+    .zoom-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--green);
+      font-family: var(--mono);
+      font-size: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .zoom-btn:hover { background: var(--surface2); }
+    .zoom-label {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      min-width: 42px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+    }
+  </style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+
+    <!-- 01 TITLE -->
+    <section>
+      <div class="s">
+        <div class="glow1"></div><div class="glow2"></div>
+        <span class="eyebrow">// internal dev talk</span>
+        <h1>Claude Code:<br>From Prompt<br>to Process</h1>
+        <div class="divider"></div>
+        <p style="color:var(--muted);">How context transforms AI output &mdash; and how to make it repeatable</p>
+      </div>
+    </section>
+
+    <!-- 02 THE PROBLEM -->
+    <section>
+      <div class="s">
+        <span class="slabel">// the starting point</span>
+        <h2>We've all sent this prompt</h2>
+        <div class="cb">
+          <span class="cg">$</span> claude<br><br>
+          <span class="cm">&gt;</span> <span class="cb_">Build a Crypto Portfolio Tracker.<br>
+          &nbsp;&nbsp;&nbsp;Backend + frontend. Fetch prices from CoinGecko,<br>
+          &nbsp;&nbsp;&nbsp;show allocation and P&amp;L.</span>
+        </div>
+        <div class="wb fragment">
+          It works. But it's <strong>not yours.</strong> Random libs, no error states, no loading skeletons, structure that doesn't match how your team builds things.
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 AGENDA -->
+    <section>
+      <div class="s">
+        <span class="slabel">// agenda</span>
+        <h2>Same project.<br>Three approaches.</h2>
+        <div class="grid g3" style="margin-top:18px;">
+          <div class="card">
+            <span class="card-n">01</span>
+            <h3>Plain prompt</h3>
+            <p>No context. Let the model decide everything.</p>
+          </div>
+          <div class="card">
+            <span class="card-n">02</span>
+            <h3>Plan mode</h3>
+            <p>See the plan before execution. Catch issues early.</p>
+          </div>
+          <div class="card" style="border-color:var(--green);">
+            <span class="card-n">03</span>
+            <h3>SDD + Full setup</h3>
+            <p>Rules, skills, commands, agents, architecture. The real thing.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 DEMO 1 -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 01</span>
+        <span class="pill po">Plain prompt</span>
+        <h2>Let it cook.</h2>
+        <div class="cb">
+          <span class="cg">$</span> mkdir crypto-raw-prompt &amp;&amp; cd crypto-raw-prompt<br>
+          <span class="cg">$</span> HOME=/tmp/clean-env claude<br><br>
+          <span class="cm">&gt;</span> <span class="cb_">Build a Crypto Portfolio Tracker web app, create a<br>
+          &nbsp;&nbsp;&nbsp;backend and frontend. Show assets with current prices<br>
+          &nbsp;&nbsp;&nbsp;from CoinGecko, portfolio allocation, and P&amp;L.</span>
+        </div>
+        <p class="fragment" style="color:var(--muted); margin-top:8px;">Watch what decisions it makes on its own &rarr;</p>
+      </div>
+    </section>
+
+    <!-- 05 DEMO 1 RESULT -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 01 &mdash; what happened</span>
+        <h2>It works.<br>But look closer.</h2>
+        <div class="grid g2" style="margin-top:10px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--orange);">Backend</span>
+            <h3>Express.js &mdash; single file</h3>
+            <p>Everything in <code>index.js</code>: routes, CoinGecko calls, P&amp;L math, data. 100+ lines, no separation.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--orange);">Frontend</span>
+            <h3>Create React App &mdash; single file</h3>
+            <p>Entire UI in <code>App.js</code>. Inline helpers, inline styles. No component breakdown.</p>
+          </div>
+        </div>
+        <ul style="margin-top:12px;">
+          <li class="fragment">Chose <strong>CRA</strong> (deprecated) instead of Vite</li>
+          <li class="fragment">No TypeScript &mdash; plain JavaScript everywhere</li>
+          <li class="fragment">Loading = <code>"Loading portfolio..."</code> string. No skeleton.</li>
+          <li class="fragment">Error = <code>"Error: {msg}"</code>. No retry, no boundary.</li>
+          <li class="fragment">Hardcoded portfolio in memory &mdash; no CRUD, no persistence</li>
+        </ul>
+        <div class="hb fragment">
+          The model isn't wrong. It just had no idea what <strong>your team's "right"</strong> looks like.
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 PLAN MODE EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// what is plan mode?</span>
+        <span class="pill pb">Plan mode</span>
+        <h2>Think first, code second.</h2>
+        <p style="color:var(--muted); margin-bottom:10px;">Before writing any code, Claude lays out its full plan. You review and redirect before execution starts.</p>
+        <div class="cb">
+          <span class="cg">$</span> claude <span class="co">--plan</span><br><br>
+          <span class="cm"># Claude analyzes the task and outputs a structured plan:</span><br>
+          <span class="cm"># - File structure it will create</span><br>
+          <span class="cm"># - Libraries it intends to use</span><br>
+          <span class="cm"># - Architecture decisions</span><br>
+          <span class="cm"># - Step-by-step execution order</span><br><br>
+          <span class="cm"># You review, give feedback, or press [y] to proceed.</span>
+        </div>
+        <div class="grid g2" style="margin-top:8px;">
+          <div class="hb" style="margin:0;">
+            <strong>Pros</strong><br>
+            Catch wrong assumptions early<br>
+            Redirect before 400 lines are written<br>
+            Visible decision-making process
+          </div>
+          <div class="wb" style="margin:0;">
+            <strong>Cons</strong><br>
+            Still negotiating per session<br>
+            No artifact &mdash; plan dies in the chat<br>
+            Different plan every run, every dev
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 DEMO 2 -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 02</span>
+        <span class="pill pb">Plan mode</span>
+        <h2>Same prompt. Plan first.</h2>
+        <div class="cb">
+          <span class="cg">$</span> mkdir crypto-raw-prompt-with-planmode &amp;&amp; cd $_<br>
+          <span class="cg">$</span> HOME=/tmp/clean-env claude <span class="co">--plan</span><br><br>
+          <span class="cm">&gt;</span> <span class="cb_">Build a Crypto Portfolio Tracker web app, create a<br>
+          &nbsp;&nbsp;&nbsp;backend and frontend. Show assets with current prices<br>
+          &nbsp;&nbsp;&nbsp;from CoinGecko, portfolio allocation, and P&amp;L.</span>
+        </div>
+        <div class="hb fragment">
+          It shows the plan first. <strong>You redirect before it writes a single line.</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 DEMO 2 RESULT -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 02 &mdash; what improved</span>
+        <h2>Better structure.<br>Still not yours.</h2>
+        <div class="grid g2" style="margin-top:10px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--blue);">Backend</span>
+            <h3>Express + separated concerns</h3>
+            <p><code>routes/</code>, <code>services/</code>, <code>data/</code> &mdash; proper separation. CoinGecko service with <strong>60s cache</strong>.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--blue);">Frontend</span>
+            <h3>Vite + React 18 + Components</h3>
+            <p>5 components: Header, PnLSummary, Allocation, AssetTable, AssetRow. Vite proxy for API.</p>
+          </div>
+        </div>
+        <ul style="margin-top:10px;">
+          <li class="fragment"><strong>Vite</strong> instead of CRA &mdash; better choice</li>
+          <li class="fragment">Components separated &mdash; but still no TypeScript</li>
+          <li class="fragment">Error handling improved: retry button, cache fallback</li>
+          <li class="fragment">Still in-memory data &mdash; no persistence, no CRUD</li>
+          <li class="fragment">Still no loading skeletons, no accessibility</li>
+        </ul>
+        <div class="wb fragment" style="margin-top:8px;">
+          Plan mode is like <strong>a code review before the code exists</strong>. Better &mdash; but it's still a one-off conversation. Next session starts from zero.
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 PLAN MODE vs RAW: SIDE BY SIDE -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 01 vs demo 02</span>
+        <h2>What plan mode changed.</h2>
+        <table class="ctable" style="margin-top:14px;">
+          <tr>
+            <th style="width:40%;">Aspect</th>
+            <th>Plain prompt</th>
+            <th>Plan mode</th>
+          </tr>
+          <tr>
+            <td>Build tool</td>
+            <td class="no">CRA (deprecated)</td>
+            <td class="yes">Vite</td>
+          </tr>
+          <tr>
+            <td>Backend structure</td>
+            <td class="no">single index.js</td>
+            <td class="yes">routes/ services/ data/</td>
+          </tr>
+          <tr>
+            <td>Component split</td>
+            <td class="no">monolith App.js</td>
+            <td class="yes">5 components</td>
+          </tr>
+          <tr>
+            <td>API caching</td>
+            <td class="no">none</td>
+            <td class="yes">60s TTL</td>
+          </tr>
+          <tr>
+            <td>Error recovery</td>
+            <td class="no">string message</td>
+            <td class="meh">retry button</td>
+          </tr>
+          <tr>
+            <td>TypeScript</td>
+            <td class="no">no</td>
+            <td class="no">no</td>
+          </tr>
+          <tr>
+            <td>Persistence / CRUD</td>
+            <td class="no">in-memory</td>
+            <td class="no">in-memory JSON</td>
+          </tr>
+          <tr>
+            <td>Accessibility</td>
+            <td class="no">none</td>
+            <td class="no">none</td>
+          </tr>
+        </table>
+        <div class="hb fragment" style="margin-top:8px;">
+          Plan mode improves <strong>structure</strong>. But it can't enforce <strong>your standards</strong> &mdash; because it doesn't know them.
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 WHAT IS SDD -->
+    <section>
+      <div class="s">
+        <span class="slabel">// spec-driven development</span>
+        <span class="pill pg">SDD</span>
+        <h2>What is Spec-Driven<br>Development?</h2>
+        <p style="color:var(--muted); margin-bottom:12px;">A structured workflow where every feature goes through documented stages before code is written.</p>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fig" style="min-width:130px; text-align:center;">PRD</div>
+            <span class="fa">&rarr;</span>
+            <span class="sm">What are we building and why? Requirements, scope, constraints.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fib" style="min-width:130px; text-align:center;">Tech Spec</div>
+            <span class="fa">&rarr;</span>
+            <span class="sm">How will we build it? Architecture, data models, API contracts.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fip" style="min-width:130px; text-align:center;">Tasks</div>
+            <span class="fa">&rarr;</span>
+            <span class="sm">Granular breakdown. Each task is one executable unit.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fio" style="min-width:130px; text-align:center;">Code</div>
+            <span class="fa">&rarr;</span>
+            <span class="sm">Execution with rules active. Structure, libs, patterns enforced.</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fig" style="min-width:130px; text-align:center;">Review</div>
+            <span class="fa">&rarr;</span>
+            <span class="sm">Agent reads PRD + spec + diff &mdash; grounded, not generic.</span>
+          </div>
+        </div>
+        <div class="hb fragment" style="margin-top:10px;">
+          Each artifact is <strong>context for the next step</strong>. The model never starts from zero.
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 RULES EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// .claude/rules/</span>
+        <h2>Rules: your team's<br>standards, codified.</h2>
+        <p style="color:var(--muted); margin-bottom:8px;">Rules are markdown files Claude reads automatically. They define what "right" looks like.</p>
+        <div class="grid g2" style="margin-top:10px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--orange);">CLAUDE.md monolithic</span>
+            <h3>Everything, always</h3>
+            <p>React rules compete with DB rules during a migration. High priority everywhere = priority nowhere.</p>
+          </div>
+          <div class="card" style="border-color:var(--green);">
+            <span class="card-n">.claude/rules/*.md</span>
+            <h3>Scoped by path</h3>
+            <p>Frontend rules fire on <code>frontend/**</code>. Architecture rules fire globally. Right context, right moment.</p>
+          </div>
+        </div>
+        <div class="cb fragment" style="margin-top:10px;">
+          <span class="cm"># .claude/rules/stack.md</span><br>
+          <span class="cg">Backend</span>: Go, Chi router, pgx, slog, golang-migrate<br>
+          <span class="cg">Frontend</span>: React 19, TypeScript strict, Vite, TanStack Query<br>
+          <span class="cg">Styling</span>: Tailwind CSS v4<br>
+          <span class="cg">Testing</span>: Vitest + Playwright (E2E)<br>
+          <span class="cg">No</span>: axios, any types, default exports, console.log
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 ARCHITECTURE RULE -->
+    <section>
+      <div class="s">
+        <span class="slabel">// .claude/rules/architecture.md</span>
+        <h2>3 layers. Hard rules.<br>Domain knows nothing.</h2>
+        <p style="color:var(--muted); font-size:0.7em; margin-bottom:10px;">Dependency direction: <code>app &rarr; domain &larr; foundation</code>. Domain never imports the others.</p>
+        <div class="layer-row">
+          <div class="lbox lo">
+            <span class="ln">foundation/</span>
+            <p>Infrastructure. DB, HTTP clients, CoinGecko API, config, logger. Implements interfaces domain defines.</p>
+          </div>
+          <div class="lbox lb">
+            <span class="ln">domain/</span>
+            <p>Business logic + interfaces. Zero external imports. Defines <em>what</em> it needs, never <em>how</em>.</p>
+          </div>
+          <div class="lbox lg">
+            <span class="ln">app/</span>
+            <p>Orchestration. Chi handlers, dependency injection in <code>wire.go</code>, CORS middleware.</p>
+          </div>
+        </div>
+        <div class="cb" style="margin-top:8px;">
+          <span class="cm">// domain/portfolio/pricer.go &mdash; never knows CoinGecko exists</span><br>
+          <span class="cg">type</span> <span class="cb_">AssetPricer</span> <span class="cg">interface</span> {<br>
+          &nbsp;&nbsp;&nbsp;<span class="cb_">GetPrices</span>(ctx context.Context, ids []<span class="cg">string</span>) (map[<span class="cg">string</span>]PriceData, error)<br>
+          }<br><br>
+          <span class="cm">// foundation/coingecko/pricer.go implements it</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 COMMANDS EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// .claude/commands/</span>
+        <span class="pill pb">Commands</span>
+        <h2>Your workflow in<br>one keystroke.</h2>
+        <p style="color:var(--muted); margin-bottom:10px;">Custom slash commands that wrap repeatable prompts. Stored in <code>.claude/commands/</code>, committed to git.</p>
+        <div class="grid g2" style="margin-top:8px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--green);">/create-prd</span>
+            <p>Reads a template, asks clarifying questions, generates a structured PRD with scope, constraints, and acceptance criteria.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--blue);">/create-techspec</span>
+            <p>Reads the PRD as input, outputs a tech spec with data models, API contracts, and architecture decisions.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--purple);">/create-tasks</span>
+            <p>Reads PRD + tech spec, generates a granular task list. Each task is a self-contained unit of work.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--orange);">/run-task</span>
+            <p>Picks the next task, reads all context (PRD, spec, existing code), executes with rules enforced.</p>
+          </div>
+        </div>
+        <div class="hb fragment" style="margin-top:8px;">
+          Every dev on the team runs <code>/create-prd</code> and gets the <strong>same structured output</strong>. No more "how did you prompt that?"
+        </div>
+      </div>
+    </section>
+
+    <!-- 14 SKILLS EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// .claude/skills/</span>
+        <span class="pill pp">Skills</span>
+        <h2>Domain expertise<br>on demand.</h2>
+        <p style="color:var(--muted); margin-bottom:10px;">Markdown files that teach Claude specific domain knowledge. Like a teammate reading the docs first.</p>
+        <div class="grid g2" style="margin-top:8px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--purple);">golang-pro</span>
+            <p>Idiomatic Go patterns: error handling with <code>%w</code>, interfaces as contracts, table-driven tests, goroutine safety, <code>slog</code> logging.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--purple);">react-best-practices</span>
+            <p>Functional components only, TanStack Query for server state, proper memo/callback usage, accessibility patterns.</p>
+          </div>
+        </div>
+        <div class="cb fragment" style="margin-top:10px;">
+          <span class="cm"># Skills vs Rules</span><br><br>
+          <span class="cg">Rules</span>  = always active (or path-scoped). Short. "Do this."<br>
+          <span class="cb_">Skills</span> = loaded on demand. Deep. "Here's how to think about this."<br><br>
+          <span class="cm"># Skills activate when Claude touches relevant code</span><br>
+          <span class="cm"># or when explicitly triggered by a command.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 AGENTS EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// .claude/agents/</span>
+        <span class="pill pp">Agents</span>
+        <h2>Sub-agents with<br>a persona.</h2>
+        <p style="color:var(--muted); margin-bottom:10px;">Agents are markdown-defined personas that review, test, or validate work with specific criteria.</p>
+        <div class="card" style="margin-top:10px; border-color:var(--purple);">
+          <span class="card-n" style="color:var(--purple);">task-reviewer agent</span>
+          <h3>Reads PRD + spec + diff &mdash; feedback is grounded</h3>
+          <p style="margin-top:6px;">Classifies issues as CRITICAL / MAJOR / MINOR. Checks against coding standards (naming, function size, test coverage). Generates <code>[num]_task_review.md</code> artifact for each task.</p>
+        </div>
+        <div class="grid g2 fragment" style="margin-top:10px;">
+          <div class="hb" style="margin:0;">
+            <strong>Without agents</strong><br>
+            "Review this code" &rarr; generic feedback about variable names and missing comments.
+          </div>
+          <div class="hb" style="margin:0; border-left-color:var(--purple); background:rgba(168,85,247,0.06); border-color:rgba(168,85,247,0.2);">
+            <strong>With task-reviewer</strong><br>
+            Checks domain boundary violations, missing error mapping, test coverage gaps against spec.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16 MCP EXPLAINED -->
+    <section>
+      <div class="s">
+        <span class="slabel">// model context protocol</span>
+        <span class="pill po">MCP</span>
+        <h2>Plug into<br>real systems.</h2>
+        <p style="color:var(--muted); margin-bottom:10px;">MCP servers give Claude access to external tools and data sources. Claude can read, query, and act on real data.</p>
+        <div class="grid g2" style="margin-top:10px;">
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--orange);">GitHub MCP</span>
+            <p>Create PRs, read issues, check CI status, comment on reviews &mdash; without leaving the terminal.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--orange);">PostgreSQL MCP</span>
+            <p>Query your database schema, run read-only queries, validate migrations against live data.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--orange);">Slack MCP</span>
+            <p>Post updates, read channel history, notify the team &mdash; integrated into your dev workflow.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--orange);">Custom MCP</span>
+            <p>Build your own. Any API, any tool. Claude calls it like a native function.</p>
+          </div>
+        </div>
+        <div class="hb fragment" style="margin-top:10px;">
+          MCP turns Claude from "generate code" into <strong>"act on your behalf"</strong> across your entire toolchain.
+        </div>
+      </div>
+    </section>
+
+    <!-- 17 DEMO 3 SETUP -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 03 &mdash; the setup</span>
+        <span class="pill pg">SDD + Full setup</span>
+        <h2>Context is everything.</h2>
+        <div class="tree">
+          <span class="td">crypto-raw-prompt-with-sdd/</span><br>
+          <span class="tc">&boxvr;&boxh;&boxh; </span><span class="td">.claude/</span><br>
+          <span class="tc">&boxv;   &boxvr;&boxh;&boxh; </span><span class="td">rules/</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxvr;&boxh;&boxh; </span><span class="tf">stack.md</span><span class="tc">           # Go, React 19, TS, Tailwind, pgx</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxur;&boxh;&boxh; </span><span class="tf">architecture.md</span><span class="tc">   # 3-layer DDD, dependency rules</span><br>
+          <span class="tc">&boxv;   &boxvr;&boxh;&boxh; </span><span class="td">commands/</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxvr;&boxh;&boxh; </span><span class="tf">create-prd.md</span><span class="tc">     # /create-prd</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxvr;&boxh;&boxh; </span><span class="tf">create-techspec.md</span><span class="tc"># /create-techspec</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxvr;&boxh;&boxh; </span><span class="tf">create-tasks.md</span><span class="tc">   # /create-tasks</span><br>
+          <span class="tc">&boxv;   &boxv;   &boxur;&boxh;&boxh; </span><span class="tf">run-task.md</span><span class="tc">       # /run-task</span><br>
+          <span class="tc">&boxv;   &boxvr;&boxh;&boxh; </span><span class="td">skills/</span><span class="tc">            # golang-pro, react-best-practices</span><br>
+          <span class="tc">&boxv;   &boxvr;&boxh;&boxh; </span><span class="td">agents/</span><span class="tc">            # task-reviewer</span><br>
+          <span class="tc">&boxv;   &boxur;&boxh;&boxh; </span><span class="td">templates/</span><span class="tc">         # PRD, TechSpec, Task templates</span><br>
+          <span class="tc">&boxvr;&boxh;&boxh; </span><span class="td">tasks/</span><span class="tc">                 # PRD, spec, 10 tasks, reviews</span><br>
+          <span class="tc">&boxur;&boxh;&boxh; </span><span class="tf">CLAUDE.md</span><span class="tc">              # project overview</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 18 DEMO 3 LIVE -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 03 &mdash; live</span>
+        <span class="pill pg">SDD + Full setup</span>
+        <h2>Same prompt.<br>Totally different output.</h2>
+        <div class="cb" style="margin-top:10px;">
+          <span class="cg">$</span> cd crypto-raw-prompt-with-sdd<br>
+          <span class="cg">$</span> claude<br><br>
+          <span class="cm"># Rules auto-loaded. Skills available. Commands ready.</span><br><br>
+          <span class="cm">&gt;</span> <span class="co">/create-prd</span> <span class="cm">&rarr; PRD generated, human reviews</span><br>
+          <span class="cm">&gt;</span> <span class="co">/create-techspec</span> <span class="cm">&rarr; reads PRD, outputs spec</span><br>
+          <span class="cm">&gt;</span> <span class="co">/create-tasks</span> <span class="cm">&rarr; 10 granular tasks from spec</span><br>
+          <span class="cm">&gt;</span> <span class="co">/run-task</span> <span class="cm">&rarr; executes task 1, then 2, then 3...</span>
+        </div>
+        <ul style="margin-top:10px;">
+          <li class="fragment"><strong>Go backend</strong> with DDD: domain interfaces, foundation implementations</li>
+          <li class="fragment"><strong>PostgreSQL</strong> with migrations, UUID PKs, trigram search</li>
+          <li class="fragment"><strong>React 19 + TypeScript strict</strong> + TanStack Query + Recharts</li>
+          <li class="fragment">Full CRUD &mdash; add, edit, delete holdings with validation</li>
+          <li class="fragment">Loading skeletons, error boundaries, empty states, accessibility</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 19 DEMO 3 RESULT DETAILS -->
+    <section>
+      <div class="s">
+        <span class="slabel">// demo 03 &mdash; what you actually get</span>
+        <h2>Production quality.<br>Not a prototype.</h2>
+        <div class="grid g3" style="margin-top:12px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--green);">Backend</span>
+            <h3>Go + Chi + pgx</h3>
+            <p>6 API endpoints. Structured logging (slog). Config from env. Graceful shutdown. Health check.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--green);">Frontend</span>
+            <h3>React 19 + TS + Tailwind</h3>
+            <p>10 components. TanStack Query with 180s polling. Recharts donut chart. Full CRUD with modals.</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--green);">Testing</span>
+            <h3>Unit + Integration + E2E</h3>
+            <p>19 domain tests. Vitest + MSW for frontend. Playwright E2E. DB integration tests.</p>
+          </div>
+        </div>
+        <div class="grid g2 fragment" style="margin-top:10px;">
+          <div class="card">
+            <span class="card-n" style="color:var(--purple);">Accessibility</span>
+            <p>ARIA labels, keyboard navigation, skip links, focus trapping in modals, color + icon indicators (not color alone).</p>
+          </div>
+          <div class="card">
+            <span class="card-n" style="color:var(--purple);">Artifacts</span>
+            <p>PRD, tech spec, 10 task files, 10 review files, QA report, bugs tracking. All in <code>tasks/</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 20 THE BIG COMPARISON -->
+    <section>
+      <div class="s">
+        <span class="slabel">// the full picture</span>
+        <h2>The actual difference.</h2>
+        <table class="ctable">
+          <tr>
+            <th>What you get</th>
+            <th>Plain prompt</th>
+            <th>Plan mode</th>
+            <th>SDD + Setup</th>
+          </tr>
+          <tr>
+            <td>Backend</td>
+            <td class="no">Express, 1 file</td>
+            <td class="meh">Express, separated</td>
+            <td class="yes">Go, DDD, 3 layers</td>
+          </tr>
+          <tr>
+            <td>Frontend</td>
+            <td class="no">CRA, JS, 1 file</td>
+            <td class="meh">Vite, JS, 5 components</td>
+            <td class="yes">Vite, TS, 10 components</td>
+          </tr>
+          <tr>
+            <td>Database</td>
+            <td class="no">in-memory array</td>
+            <td class="no">JSON file</td>
+            <td class="yes">PostgreSQL + migrations</td>
+          </tr>
+          <tr>
+            <td>CRUD operations</td>
+            <td class="no">read-only</td>
+            <td class="no">read-only</td>
+            <td class="yes">full CRUD + validation</td>
+          </tr>
+          <tr>
+            <td>Error / loading states</td>
+            <td class="no">string messages</td>
+            <td class="meh">retry button</td>
+            <td class="yes">skeletons + boundaries</td>
+          </tr>
+          <tr>
+            <td>Testing</td>
+            <td class="no">placeholder</td>
+            <td class="no">none</td>
+            <td class="yes">unit + integration + E2E</td>
+          </tr>
+          <tr>
+            <td>Accessibility</td>
+            <td class="no">none</td>
+            <td class="no">none</td>
+            <td class="yes">ARIA, keyboard, focus</td>
+          </tr>
+          <tr>
+            <td>Consistency across devs</td>
+            <td class="no">none</td>
+            <td class="no">none</td>
+            <td class="yes">same rules, same output</td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- 21 FULL TOOLBOX SUMMARY -->
+    <section>
+      <div class="s">
+        <span class="slabel">// the full toolbox</span>
+        <h2>Rules are just<br>the beginning.</h2>
+        <div class="grid g4" style="margin-top:12px;">
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--green);">Rules</span>
+            <p>Always-on standards. Stack, architecture, coding patterns. Auto-loaded or path-scoped.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--blue);">Commands</span>
+            <p>Repeatable workflows. <code>/create-prd</code>, <code>/run-task</code> &mdash; same output for every dev.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--purple);">Skills + Agents</span>
+            <p>Deep domain knowledge on demand. Review agents that check against spec, not vibes.</p>
+          </div>
+          <div class="tool-card">
+            <span class="tc-label" style="color:var(--orange);">MCP</span>
+            <p>Real system access. GitHub, Postgres, Slack &mdash; Claude acts on live data, not hypotheticals.</p>
+          </div>
+        </div>
+        <div class="hb fragment" style="margin-top:10px;">
+          Each layer adds <strong>more context</strong> and <strong>less repeated explaining.</strong><br>
+          Everything lives in git. Every PR that adds a rule makes <strong>every future AI interaction better.</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- 22 SDD WORKFLOW VISUAL -->
+    <section>
+      <div class="s">
+        <span class="slabel">// putting it all together</span>
+        <h2>The SDD workflow<br>with artifacts at every step.</h2>
+        <div style="display:flex; flex-direction:column; gap:9px; margin-top:14px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div class="fi fig" style="min-width:140px; text-align:center;">/create-prd</div>
+            <span class="fa">&rarr;</span>
+            <span style="font-size:0.63em; color:var(--muted);">PRD from template &rarr; human reviews &rarr; <code>tasks/prd.md</code></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;" class="fragment">
+            <div class="fi fib" style="min-width:140px; text-align:center;">/create-techspec</div>
+            <span class="fa">&rarr;</span>
+            <span style="font-size:0.63em; color:var(--muted);">Reads PRD &rarr; outputs spec &rarr; human reviews &rarr; <code>tasks/techspec.md</code></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;" class="fragment">
+            <div class="fi fip" style="min-width:140px; text-align:center;">/create-tasks</div>
+            <span class="fa">&rarr;</span>
+            <span style="font-size:0.63em; color:var(--muted);">Reads PRD + spec &rarr; 10 task files &rarr; <code>tasks/[n]_task.md</code></span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;" class="fragment">
+            <div class="fi fio" style="min-width:140px; text-align:center;">/run-task</div>
+            <span class="fa">&rarr;</span>
+            <span style="font-size:0.63em; color:var(--muted);">Picks next task &rarr; reads all context &rarr; codes with rules enforced</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;" class="fragment">
+            <div class="fi fig" style="min-width:140px; text-align:center;">task-reviewer</div>
+            <span class="fa">&rarr;</span>
+            <span style="font-size:0.63em; color:var(--muted);">Agent reads PRD + spec + diff &rarr; <code>tasks/[n]_task_review.md</code></span>
+          </div>
+        </div>
+        <div class="hb fragment" style="margin-top:12px;">
+          10 tasks executed, 10 reviews generated. Every decision is traceable back to the PRD.
+        </div>
+      </div>
+    </section>
+
+    <!-- 23 HOW TO START -->
+    <section>
+      <div class="s">
+        <span class="slabel">// action items</span>
+        <h2>Start this week.</h2>
+        <ul style="margin-top:14px;">
+          <li class="fragment">Create <code>.claude/rules/</code> in your current project &mdash; even one file</li>
+          <li class="fragment">Start with what the model gets wrong most: architecture? libs? error states?</li>
+          <li class="fragment">Add a <code>/create-prd</code> command &mdash; wrap your most common workflow</li>
+          <li class="fragment">Add skills for your domain (Go patterns, React patterns, your DB conventions)</li>
+          <li class="fragment">Add a review agent once the workflow is solid &mdash; grounded reviews, not generic</li>
+          <li class="fragment">Connect MCP servers for GitHub, your database, Slack &mdash; real system access</li>
+        </ul>
+        <div class="hb fragment" style="margin-top:12px;">
+          Rules live in git. Every PR that adds a rule makes the <strong>next AI interaction better for the whole team.</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- 24 CLOSING -->
+    <section>
+      <div class="s">
+        <div class="glow1"></div><div class="glow2"></div>
+        <span class="eyebrow">// fin</span>
+        <h1>Questions?</h1>
+        <div class="divider"></div>
+        <div class="cb" style="display:inline-block; margin-top:14px;">
+          <span class="cg">$</span> ls .claude/<br>
+          <span class="cg">rules/</span> &nbsp;&nbsp; <span class="cb_">commands/</span> &nbsp;&nbsp; <span class="cp">skills/</span> &nbsp;&nbsp; <span class="cp">agents/</span> &nbsp;&nbsp; <span class="co">templates/</span>
+        </div>
+        <p style="color:var(--muted); margin-top:14px;">The model doesn't know your team. <strong>Now it does.</strong></p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoom-out" title="Diminuir (-)">−</button>
+  <span class="zoom-label" id="zoom-level">100%</span>
+  <button class="zoom-btn" id="zoom-in" title="Aumentar (+)">+</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.1/reveal.min.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    controls: true,
+    progress: true,
+    center: false,
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    slideNumber: 'c/t',
+    width: 960,
+    height: 700,
+    margin: 0.04,
+    minScale: 0.4,
+    maxScale: 2.0,
+  });
+
+  // Zoom controls
+  (function() {
+    var scale = 100;
+    var slides = document.querySelector('.reveal .slides');
+    var label = document.getElementById('zoom-level');
+
+    function applyZoom() {
+      slides.style.fontSize = scale + '%';
+      label.textContent = scale + '%';
+    }
+
+    document.getElementById('zoom-in').addEventListener('click', function() {
+      scale = Math.min(150, scale + 10);
+      applyZoom();
+    });
+
+    document.getElementById('zoom-out').addEventListener('click', function() {
+      scale = Math.max(60, scale - 10);
+      applyZoom();
+    });
+  })();
+</script>
+</body>
+</html>
